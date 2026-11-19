@@ -1,0 +1,1821 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Громадянська війна в росії (1917-1922): квіз за відео та картою</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f172a'/%3E%3Cpath fill='%23ef4444' d='M24 10a3 3 0 0 1 3 3v16h2V9a3 3 0 0 1 6 0v20h2V12a3 3 0 0 1 6 0v18h2V17a3 3 0 0 1 6 0v21c0 9.5-6.5 16-16 16h-3c-7.5 0-13-4.5-15.5-11.5l-4.2-10.5a3 3 0 0 1 5.5-2.4l3.2 6.4V13a3 3 0 0 1 3-3z'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --card: #273549;
+      --accent: #eab308;
+      --blue: #3b82f6;
+      --green: #22c55e;
+      --red: #ef4444;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    header {
+      background: #020617;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #334155;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .title-box h1 { font-size: 0.98rem; color: var(--accent); }
+    .title-box p { font-size: 0.76rem; color: var(--muted); }
+    .controls-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .stage-badge {
+      background: #1e293b; color: #e2e8f0; border: 1px solid #475569;
+      padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;
+    }
+    .header-btn {
+      background: #1e293b; color: #f8fafc; border: 1px solid #475569;
+      padding: 4px 10px; border-radius: 6px; font-size: 0.78rem; cursor: pointer;
+    }
+    .header-btn:hover { background: #334155; }
+    .header-btn.danger { border-color: #991b1b; color: #fecaca; }
+    .header-btn.danger:hover { background: #7f1d1d; }
+    .teacher-toggle {
+      display: flex; align-items: center; gap: 5px; font-size: 0.78rem;
+      background: #1e1b4b; padding: 4px 9px; border-radius: 6px; border: 1px solid #4338ca;
+      cursor: pointer; user-select: none;
+    }
+    .progress-pill {
+      background: #14532d; color: #bbf7d0; padding: 4px 11px;
+      border-radius: 20px; font-weight: 700; font-size: 0.82rem;
+    }
+
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1.22fr 0.78fr;
+      overflow: hidden;
+    }
+    #map-wrap {
+      position: relative;
+      background: #090d16;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .map-top-hint-bar {
+      background: #0b1324;
+      border-bottom: 1px solid #334155;
+      padding: 7px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .map-hint-inline {
+      font-size: 0.84rem;
+      color: #f8fafc;
+      line-height: 1.35;
+    }
+    .map-hint-inline strong {
+      color: var(--accent);
+    }
+    .step-sub-text {
+      font-size: 0.76rem;
+      color: #94a3b8;
+      white-space: nowrap;
+      font-weight: 600;
+    }
+    #map-container {
+      position: relative;
+      flex: 1;
+      width: 100%;
+      min-height: 0;
+    }
+    #map { width: 100%; height: 100%; background: #0b1120; }
+    .map-source-bar {
+      position: absolute; bottom: 6px; left: 12px; z-index: 1000;
+      background: rgba(2, 6, 23, 0.88); border: 1px solid #334155;
+      padding: 5px 10px; border-radius: 5px; font-size: 0.72rem; color: #cbd5e1;
+      max-width: calc(100% - 24px); line-height: 1.4;
+    }
+    .map-source-bar a { color: #93c5fd; text-decoration: none; }
+    .map-source-bar a:hover { text-decoration: underline; }
+
+    .coord-toast {
+      position: absolute; top: 12px; right: 12px; z-index: 1000;
+      background: #312e81; color: #e0e7ff; padding: 8px 12px;
+      border-radius: 8px; font-family: monospace; font-size: 0.84rem; display: none;
+      border: 1px solid #6366f1;
+    }
+
+    aside {
+      background: var(--panel);
+      border-left: 1px solid #334155;
+      overflow-y: auto;
+      padding: 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 11px;
+    }
+    .step-nav { display: flex; gap: 5px; flex-wrap: wrap; }
+    .step-dot {
+      width: 29px; height: 29px; border-radius: 50%; border: 1px solid #475569;
+      background: var(--card); color: var(--text); font-size: 0.77rem;
+      cursor: pointer; font-weight: 700; transition: 0.15s;
+    }
+    .step-dot.locked { opacity: 0.42; cursor: not-allowed; background: #0f172a; }
+    .step-dot.active { background: var(--accent); color: #000; border-color: var(--accent); }
+    .step-dot.done { background: var(--green); color: #000; border-color: var(--green); }
+
+    .video-box {
+      background: #000; border-radius: 10px; overflow: hidden;
+      border: 1px solid #334155; flex-shrink: 0;
+      display: flex; flex-direction: column;
+    }
+    .video-box:fullscreen {
+      width: 100vw; height: 100vh; border-radius: 0; border: none;
+    }
+    .video-box:fullscreen .video-frame {
+      flex: 1; padding-bottom: 0; height: auto;
+    }
+    .video-frame { position: relative; padding-bottom: 52%; height: 0; }
+    .video-frame iframe, .video-frame #yt-player {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    }
+    /* Захист від перемотування в режимі учня */
+    .video-shield {
+      position: absolute; inset: 0; z-index: 10;
+      cursor: pointer;
+      background: transparent;
+    }
+    .watch-progress-wrap {
+      background: #0f172a; padding: 6px 12px; border-top: 1px solid #1e293b;
+    }
+    .watch-progress-header {
+      display: flex; justify-content: space-between; font-size: 0.75rem;
+      color: #cbd5e1; margin-bottom: 4px;
+    }
+    .progress-track {
+      width: 100%; height: 6px; background: #334155; border-radius: 99px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; width: 0%; background: var(--accent); transition: width 0.3s, background 0.3s;
+    }
+    .progress-fill.complete { background: var(--green); }
+    .video-bar {
+      padding: 5px 8px; background: #020617; display: flex;
+      justify-content: space-between; align-items: center; font-size: 0.74rem; color: #e2e8f0;
+      gap: 6px; flex-wrap: nowrap;
+    }
+    #video-timer-label {
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      min-width: 0; font-size: 0.73rem;
+    }
+    .video-controls-group {
+      display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; flex-shrink: 0;
+    }
+    .vol-slider {
+      width: 48px !important; min-width: 48px; max-width: 48px;
+      height: 4px; cursor: pointer; accent-color: var(--accent); flex-shrink: 0;
+    }
+    .btn-small {
+      background: #334155; color: #fff; border: none; padding: 3px 6px;
+      border-radius: 5px; cursor: pointer; font-size: 0.73rem; font-weight: 600;
+      line-height: 1.2; flex-shrink: 0;
+    }
+    .btn-small:hover { background: #475569; }
+
+    .tasks-wrapper {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 11px;
+    }
+    .tasks-locked-overlay {
+      position: absolute; inset: 0; z-index: 20;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(4px);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 22px;
+      border: 1px dashed var(--accent);
+    }
+    .tasks-locked-overlay p { font-size: 0.88rem; color: #f1f5f9; line-height: 1.45; }
+
+    .task-card {
+      background: var(--card);
+      border-radius: 10px;
+      padding: 12px;
+      border: 1px solid #334155;
+    }
+    .task-card h3 { font-size: 0.9rem; color: var(--accent); margin-bottom: 6px; }
+    .task-card p { font-size: 0.85rem; line-height: 1.45; margin-bottom: 8px; }
+
+    .source-box {
+      background: #1a2234;
+      border-left: 3px solid var(--accent);
+      padding: 9px 11px;
+      margin-bottom: 10px;
+      border-radius: 0 8px 8px 0;
+      display: flex;
+      gap: 11px;
+      align-items: flex-start;
+    }
+    .source-box img {
+      width: 82px; height: 106px; object-fit: contain;
+      border-radius: 6px; border: 1px solid #64748b; flex-shrink: 0; background: #0f172a;
+    }
+    .source-box img.zoomable-doc,
+    .source-box img.zoomable-portrait,
+    .mini-portrait.zoomable-portrait,
+    .portrait-card img.zoomable-portrait {
+      cursor: zoom-in;
+      border-color: var(--accent);
+    }
+    .source-text { font-size: 0.81rem; font-style: italic; color: #e2e8f0; line-height: 1.42; }
+    .source-caption { font-size: 0.73rem; color: var(--muted); margin-top: 4px; font-style: normal; font-weight: 600; }
+    .zoom-hint { font-size: 0.7rem; color: var(--accent); margin-top: 3px; font-style: normal; }
+
+    .opt-list { display: flex; flex-direction: column; gap: 6px; }
+    .opt-item {
+      background: #1e293b; border: 1px solid #475569; padding: 8px 10px;
+      border-radius: 7px; cursor: pointer; font-size: 0.83rem;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .opt-item:hover { border-color: var(--blue); }
+
+    /* Візуальне з'єднання пар лініями */
+    .match-wrapper { position: relative; }
+    .match-svg {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none; z-index: 2;
+    }
+    .match-grid {
+      display: grid; grid-template-columns: 1fr 1.15fr; gap: 28px;
+      position: relative; z-index: 3;
+    }
+    .match-col { display: flex; flex-direction: column; gap: 8px; justify-content: space-between; }
+    .match-btn {
+      background: #1e293b; border: 1px solid #475569; color: var(--text);
+      padding: 7px 9px; border-radius: 6px; font-size: 0.78rem; text-align: left;
+      cursor: pointer; display: flex; align-items: center; gap: 8px; line-height: 1.3;
+      min-height: 52px;
+    }
+    .match-btn img.mini-portrait {
+      width: 40px; height: 52px; object-fit: contain; background: #0f172a;
+      border-radius: 4px; border: 1px solid #64748b; flex-shrink: 0;
+    }
+    .match-btn.selected { border-color: var(--accent); background: #3f3818; }
+    .match-btn.paired { border-color: var(--blue); background: #172554; }
+
+    /* Вибір портрета + вписати прізвище (Мітка 5) — без обрізання */
+    .portrait-choice-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px;
+    }
+    .portrait-card {
+      background: #1e293b; border: 2px solid #475569; border-radius: 8px;
+      padding: 6px; text-align: center; cursor: pointer; transition: 0.15s;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .portrait-card:hover { border-color: var(--blue); }
+    .portrait-card.chosen { border-color: var(--accent); background: #3f3818; }
+    .portrait-card img {
+      width: 100%; height: 156px; object-fit: contain; background: #0f172a;
+      border-radius: 5px; display: block; margin-bottom: 5px;
+    }
+    .portrait-card span { font-size: 0.75rem; color: #cbd5e1; font-weight: 600; }
+
+    .slider-wrap { padding: 6px 4px; }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+    .slider-labels {
+      display: flex; justify-content: space-between; font-size: 0.71rem;
+      color: var(--muted); margin-top: 4px;
+    }
+    .slider-val {
+      text-align: center; font-weight: 700; color: var(--accent);
+      margin-top: 5px; font-size: 0.86rem;
+    }
+
+    .text-input {
+      width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid #475569;
+      background: #0f172a; color: #fff; font-size: 0.85rem;
+    }
+
+    .action-btn {
+      margin-top: 10px; background: var(--blue); color: #fff; border: none;
+      padding: 8px 14px; border-radius: 7px; font-weight: 600; cursor: pointer;
+      font-size: 0.83rem;
+    }
+    .next-btn {
+      margin-top: 10px; background: var(--green); color: #052e16; border: none;
+      padding: 9px 16px; border-radius: 7px; font-weight: 700; cursor: pointer;
+      font-size: 0.85rem; width: 100%; display: none;
+    }
+    .feedback {
+      margin-top: 8px; font-size: 0.81rem; font-weight: 600; padding: 6px 10px;
+      border-radius: 6px; display: none;
+    }
+    .feedback.ok { display: block; background: #14532d; color: #bbf7d0; }
+    .feedback.err { display: block; background: #7f1d1d; color: #fecaca; }
+
+    /* Жорстка прив'язка маркерів Leaflet без зміщення при зумі */
+    .leaflet-marker-icon.pin-wrap,
+    .leaflet-marker-icon.spot-wrap {
+      background: transparent !important;
+      border: none !important;
+      margin: 0 !important;
+    }
+    .custom-pin {
+      width: 30px; height: 30px; border-radius: 50%;
+      margin-left: -15px; margin-top: -15px;
+      background: var(--accent); color: #000; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.8);
+      font-size: 0.82rem; cursor: pointer;
+    }
+    .custom-pin.done { background: var(--green); color: #052e16; }
+    .custom-pin.active {
+      background: #ef4444; color: #fff;
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.5);
+    }
+    .custom-pin.picked-for-move {
+      outline: 3px dashed #38bdf8;
+      outline-offset: 3px;
+    }
+
+    /* Напівпрозорі жовті мітки-цілі та мітки-обманки */
+    .target-spot {
+      width: 26px; height: 26px; border-radius: 50%;
+      margin-left: -13px; margin-top: -13px;
+      background: rgba(250, 204, 21, 0.42);
+      border: 2px solid rgba(250, 204, 21, 0.9);
+      box-shadow: 0 0 8px rgba(250, 204, 21, 0.45);
+      cursor: pointer;
+    }
+    .target-spot:hover {
+      background: rgba(250, 204, 21, 0.72);
+    }
+
+    /* Lightbox для документів (повний екран) та портретів (збільшення удвічі) */
+    .lightbox {
+      position: fixed; inset: 0; z-index: 5000;
+      background: rgba(2, 6, 23, 0.9);
+      display: none; align-items: center; justify-content: center;
+      padding: 20px; cursor: zoom-out;
+    }
+    .lightbox img.doc-full {
+      max-width: 92vw; max-height: 90vh; border-radius: 10px;
+      border: 2px solid var(--accent); box-shadow: 0 10px 30px rgba(0,0,0,0.85);
+    }
+    .lightbox img.portrait-2x {
+      width: 260px; max-width: 75vw; height: auto; border-radius: 10px;
+      border: 2px solid var(--accent); box-shadow: 0 10px 30px rgba(0,0,0,0.85);
+      background: #0f172a;
+    }
+
+    /* Модальне вікно старту, пароля та фінального вітання */
+    .modal-backdrop {
+      position: fixed; inset: 0; z-index: 6000;
+      background: rgba(2, 6, 23, 0.84);
+      display: none; align-items: center; justify-content: center;
+      padding: 16px;
+    }
+    .modal-box {
+      background: #1e293b; border: 1px solid #4338ca; border-radius: 12px;
+      padding: 20px; width: 340px; max-width: 95vw; text-align: center;
+      box-shadow: 0 12px 35px rgba(0,0,0,0.75);
+    }
+    .modal-box.start {
+      border-color: var(--accent);
+      width: 470px;
+      text-align: left;
+    }
+    .modal-box.start h4 {
+      text-align: center;
+      font-size: 1.15rem;
+      margin-bottom: 10px;
+    }
+    .modal-box.start ol {
+      margin: 0 0 14px 20px;
+      font-size: 0.85rem;
+      color: #e2e8f0;
+      line-height: 1.52;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .modal-box.start li strong { color: var(--accent); }
+    .modal-box.victory {
+      border-color: var(--green);
+      width: 430px;
+    }
+    .modal-box h4 { color: var(--accent); margin-bottom: 8px; font-size: 1.05rem; }
+    .modal-box.victory h4 { color: var(--green); font-size: 1.2rem; }
+    .modal-box p { font-size: 0.85rem; color: #e2e8f0; margin-bottom: 12px; line-height: 1.48; }
+    .modal-actions { display: flex; gap: 10px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
+
+    footer {
+      background: #020617;
+      border-top: 1px solid #334155;
+      padding: 4px 16px;
+      text-align: right;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    @media (max-width: 900px) {
+      main { grid-template-columns: 1fr; grid-template-rows: 45vh 55vh; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="title-box">
+    <h1>Громадянська війна в росії (1917-1922): квіз за відео та картою</h1>
+    <p>Переглянь фрагмент → перетягни мітку у потрібну точку на карті → виконай завдання з джерелом</p>
+  </div>
+  <div class="controls-top">
+    <span class="stage-badge" id="stage-indicator">Етап 1: 1917–1918 рр.</span>
+    <div class="teacher-toggle" id="teacher-btn" onclick="toggleTeacherAuth()">
+      <span id="teacher-lock-icon">🔒</span> <span>Режим учителя</span>
+    </div>
+    <button class="header-btn" onclick="toggleFullscreen()" title="Розгорнути на весь екран">⛶ На весь екран</button>
+    <button class="header-btn danger" onclick="resetProgress()" title="Очистити всі збережені відповіді">↻ Почати заново</button>
+    <div class="progress-pill" id="progress-box">Виконано: 0 / 24 завдань</div>
+  </div>
+</header>
+
+<main>
+  <div id="map-wrap">
+    <div class="map-top-hint-bar">
+      <div class="map-hint-inline" id="map-hint">📍 Завантаження карти...</div>
+      <span class="step-sub-text" id="map-step-counter">Крок 1 із 12</span>
+    </div>
+    <div id="map-container">
+      <div id="map"></div>
+      <div class="coord-toast" id="coord-toast">Координата: [0, 0]</div>
+      <div class="map-source-bar" id="map-source-bar"></div>
+    </div>
+  </div>
+
+  <aside>
+    <div class="step-nav" id="step-nav"></div>
+
+    <div class="video-box" id="video-box">
+      <div class="video-frame">
+        <div id="yt-player"></div>
+        <div class="video-shield" id="video-shield" onclick="togglePlayPause()" ondblclick="toggleVideoFullscreen()" title="Клік — пауза/відтворення; подвійний клік — на весь екран"></div>
+      </div>
+      <div class="watch-progress-wrap">
+        <div class="watch-progress-header">
+          <span id="watch-status-text">Переглянуто: 0% (потрібно 88%)</span>
+          <span id="watch-seconds-text">0 / 0 с</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="watch-progress-fill"></div>
+        </div>
+      </div>
+      <div class="video-bar">
+        <span id="video-timer-label">Фрагмент: 00:00 – 04:33</span>
+        <div class="video-controls-group">
+          <button class="btn-small" id="mute-btn" onclick="toggleMute()" title="Вимкнути / увімкнути звук">🔊</button>
+          <input type="range" class="vol-slider" id="volume-slider" min="0" max="100" value="100" oninput="changeVolume(this.value)" title="Гучність" />
+          <select class="btn-small" id="speed-select" onchange="changePlaybackSpeed(this.value)" title="Швидкість відтворення">
+            <option value="0.75">0.75x</option>
+            <option value="1" selected>1x</option>
+            <option value="1.25">1.25x</option>
+            <option value="1.5">1.5x</option>
+          </select>
+          <button class="btn-small" onclick="toggleVideoFullscreen()" title="Розгорнути відео на весь екран">⛶</button>
+          <button class="btn-small" onclick="replaySegment()" title="Переглянути фрагмент спочатку">↻</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="tasks-wrapper">
+      <div class="tasks-locked-overlay" id="tasks-lock">
+        <p>🔒 <strong>Завдання заблоковані до перегляду відео</strong><br><br>
+        Запусти відеофрагмент вище. Щойно ти переглянеш щонайменше <strong>88%</strong> уривка, завдання відкриються автоматично.</p>
+      </div>
+
+      <div class="task-card">
+        <h3>Завдання А: Робота з картою</h3>
+        <p id="map-task-desc"></p>
+        <div class="feedback" id="fb-map"></div>
+      </div>
+
+      <div class="task-card">
+        <h3>Завдання Б: Робота з джерелом та постатями</h3>
+        <div id="source-container"></div>
+        <p id="quiz-question"></p>
+        <div id="quiz-body"></div>
+        <button class="action-btn" id="check-quiz-btn" onclick="checkQuiz()">Перевірити відповідь</button>
+        <div class="feedback" id="fb-quiz"></div>
+        <button class="next-btn" id="next-step-btn" onclick="goNextStep()">Перейти до наступної мітки →</button>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<footer>
+  Створено Ольгою Герінбург + Gemini
+</footer>
+
+<div class="lightbox" id="lightbox" onclick="this.style.display='none'">
+  <img id="lightbox-img" src="" alt="Збільшене зображення" />
+</div>
+
+<div class="modal-backdrop" id="start-modal" style="display: flex;">
+  <div class="modal-box start">
+    <!-- Оновлений блок логотипу та заголовків -->
+    <div style="text-align: center; margin-bottom: 14px;">
+      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f172a'/%3E%3Cpath fill='%23ef4444' d='M24 10a3 3 0 0 1 3 3v16h2V9a3 3 0 0 1 6 0v20h2V12a3 3 0 0 1 6 0v18h2V17a3 3 0 0 1 6 0v21c0 9.5-6.5 16-16 16h-3c-7.5 0-13-4.5-15.5-11.5l-4.2-10.5a3 3 0 0 1 5.5-2.4l3.2 6.4V13a3 3 0 0 1 3-3z'/%3E%3C/svg%3E" alt="Іконка гри" style="width: 52px; height: 52px; margin-bottom: 8px; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
+      
+      <h3 style="margin: 0 0 6px 0; font-size: 1.25rem; line-height: 1.25;">
+        Громадянська війна в росії (1917–1921)
+      </h3>
+      
+      <div style="margin: 0; font-size: 0.9rem; color: #94a3b8; font-weight: 500;">
+        Інтерактивний квіз за відео та картою
+      </div>
+    </div>
+
+    <p style="text-align: center; color: #cbd5e1;">Виконай 12 послідовних кроків (24 завдання), щоб простежити перебіг подій 1917–1922 років:</p>
+    <ol>
+      <li><strong>Переглянь відеофрагмент</strong> на панелі праворуч (потрібно переглянути щонайменше 88% уривка, щоб розблокувати завдання).</li>
+      <li><strong>Познач місце на карті (Завдання А):</strong> натисни на активну червону мітку вгорі карти, а потім — на відповідну жовту точку на карті.</li>
+      <li><strong>Виконай завдання з джерелом (Завдання Б):</strong> проаналізуй документ чи портрет (натисни на нього, щоб збільшити) і дай відповідь на запитання.</li>
+    </ol>
+    <p style="font-size: 0.78rem; color: var(--muted); text-align: center; margin-bottom: 8px;">Твій прогрес зберігається автоматично.<br> Коли будеш готовий — натисни кнопку нижче.</p>
+    <div class="modal-actions">
+      <button class="next-btn" style="display: block; margin-top: 0; width: auto; padding: 10px 26px; font-size: 0.92rem;" onclick="startQuizFromWelcome()">▶ Почати роботу</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="pwd-modal">
+  <div class="modal-box">
+    <h4>Вхід у режим учителя</h4>
+    <p>Введіть пароль для доступу до всіх міток та координат:</p>
+    <input type="password" class="text-input" id="teacher-pwd-input" placeholder="Пароль"
+           onkeydown="if(event.key==='Enter') verifyTeacherPwd()" />
+    <div class="feedback err" id="pwd-err" style="display:none; margin-top:6px;">Невірний пароль</div>
+    <div class="modal-actions">
+      <button class="action-btn" style="margin-top:0" onclick="verifyTeacherPwd()">Увійти</button>
+      <button class="header-btn" onclick="closePwdModal()">Скасувати</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="victory-modal">
+  <div class="modal-box victory">
+    <h4>🎉 Вітаю! Інтерактивний квіз успішно завершено!</h4>
+    <p>Ти опрацював усі 12 відеофрагментів, правильно визначив усі історико-географічні об’єкти на обох картах та виконав усі завдання з історичними джерелами й постатями 1917–1922 років.</p>
+    <p style="font-size: 0.78rem; color: var(--muted);">Тепер ти можеш перемикатися між кроками 1–12 праворуч, щоб переглянути обидві карти, відео та виконані завдання, або очистити відповіді й пройти квіз заново.</p>
+    <div class="modal-actions">
+      <button class="header-btn" onclick="closeVictoryModal()">Переглянути карти й завдання</button>
+      <button class="header-btn danger" onclick="resetProgress(true)">↻ Почати знову</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+  const STORAGE_KEY = 'civ_war_quest_v4';
+  const REQUIRED_WATCH_RATIO = 0.88;
+  // SHA-256 хеш пароля вчителя
+  const TEACHER_PWD_HASH = 'bb66e3d0e4c7d455e94829b836c383f4074a2d0d5932cf20147a91f9759301f8';
+
+  const MAPS = {
+    1: {
+      file: './map-1917-1918.png',
+      fallbackUrl: 'https://www.worldhistory.org/uploads/images/20702.png',
+      sourcePage: 'https://www.worldhistory.org/image/20702/map-of-the-russian-revolution--collapse-of-tsarism/',
+      sourceLabel: 'World History Encyclopedia — Map of the Russian Revolution & Collapse of Tsarism',
+      videoUrl: 'https://youtu.be/7ORM8gT2tcE?si=foUyzLFMfWKtVMkr',
+      videoLabel: 'Базована Історія — Громадянська війна в Росії | Чому Розвалилась імперія Романових?'
+    },
+    2: {
+      file: './map-1919-1922.png',
+      fallbackUrl: 'https://www.worldhistory.org/uploads/images/21062.png',
+      sourcePage: 'https://www.worldhistory.org/image/21062/map-of-the-russian-civil-war-in-europe-1917-1922/',
+      sourceLabel: 'World History Encyclopedia — Map of the Russian Civil War in Europe (1917–1922)',
+      videoUrl: 'https://youtu.be/2E3vPGzKclY?si=fZO-q8ZJfyaoqA0r',
+      videoLabel: 'Базована Історія — Як Більшовики Захопили Росію? Громадянська Війна 1919-1922'
+    }
+  };
+
+  // Мітки-обманки для кожної карти
+  const DECOY_SPOTS = {
+    1: [
+      { coords: [1570, 1600], name: 'Москва' },
+      { coords: [1064, 1117], name: 'Київ' },
+      { coords: [1685, 667],  name: 'Рига' },
+      { coords: [1661, 3209], name: 'Єкатеринбург' },
+      { coords: [1556, 2409], name: 'Казань' }
+    ],
+    2: [
+      { coords: [1565, 1604], name: 'Москва' },
+      { coords: [1064, 1135], name: 'Київ' },
+      { coords: [1997, 1125], name: 'Петроград' },
+      { coords: [541, 1319],  name: 'Севастополь' },
+      { coords: [1225, 455],  name: 'Варшава' },
+      { coords: [1520, 3300], name: 'Челябінськ' },
+      { coords: [1426, 2366], name: 'Симбірськ' },
+      { coords: [2484, 1822], name: 'Архангельськ' },
+      { coords: [385, 626],   name: 'Софія' }
+    ]
+  };
+
+  const STEPS = [
+    {
+      id: 1, stage: 1, title: '1. Псков — Лютнева революція (1917)',
+      videoId: '7ORM8gT2tcE', segments: [{ start: 0, end: 273 }], timeText: '00:00 – 04:33',
+      pinCoords: [2506, 2372], targetCoords: [1750, 970], tolerance: 75,
+      mapTask: 'Покажіть на карті місто, в якому цар Микола ІІ підписав Маніфест про зречення від престолу',
+      source: {
+        img: './manifest-1917.jpg', imgType: 'doc',
+        text: '«...У дні великої боротьби із зовнішнім ворогом... визнали Ми за благо зректися Престолу Держави Російської і скласти із Себе Верховну владу. Не бажаючи розлучатися з улюбленим Сином Нашим, Ми передаємо спадщину Нашу Братові Нашому Великому Князю Михаїлу Олександровичу...»',
+        caption: 'Із Маніфесту про зречення імператора Миколи II (2 (15) березня 1917 р.)'
+      },
+      quiz: {
+        type: 'multi',
+        question: 'Спираючись на текст документа та відео, оберіть ДВА правильні твердження:',
+        options: [
+          { text: 'Микола II зрікся престолу на користь свого брата Михаїла, а не малолітнього сина Олексія', ok: true },
+          { text: 'Однією з головних причин падіння монархії стала політична нерішучість імператора та криза на фронті', ok: true },
+          { text: 'Зречення відбулося після штурму Зимового палацу загонами більшовиків', ok: false },
+          { text: 'Після зречення Микола II очолив Тимчасовий уряд у Петрограді', ok: false }
+        ]
+      }
+    },
+    {
+      id: 2, stage: 1, title: '2. Галичина — Двовладдя та наступ 1917 р.',
+      videoId: '7ORM8gT2tcE', segments: [{ start: 352, end: 455 }], timeText: '05:52 – 07:35',
+      pinCoords: [2506, 2550], targetCoords: [1000, 675], tolerance: 75,
+      mapTask: 'Позначте на карті історико-географічний регіон на заході України, де в червні 1917 р. провалився наступ О. Керенського і російська армія відступила на 240 км.',
+      source: {
+        img: './hrushevsky.jpg', imgType: 'portrait',
+        text: '«Віднині самі будемо творити наше життя... Українська Центральна Рада, обрана українським народом через його революційні організації, незабаром поповниться на справедливих основах представниками інших народів, що живуть на Україні, від їх революційних організацій, і тоді стане найвищим органом революційної демократії України»',
+        caption: 'Михайло Грушевський та уривок із І Універсалу Української Центральної Ради (10 (23) червня 1917 р.)'
+      },
+      quiz: {
+        type: 'match',
+        question: 'Установіть відповідність між органами влади, що сформувалися навесні 1917 р., та їхніми характеристиками:',
+        pairs: [
+          { left: 'Тимчасовий уряд', right: 'Загальноросійський уряд у Петрограді на чолі з князем Г. Львовим' },
+          { left: 'Українська Центральна Рада', right: 'Представницький орган українського національного руху в Києві' },
+          { left: 'Петроградська рада', right: 'Соціалістичний центр впливу робітничих і солдатських депутатів' }
+        ]
+      }
+    },
+    {
+      id: 3, stage: 1, title: '3. Петроград — Жовтневий переворот',
+      videoId: '7ORM8gT2tcE', segments: [{ start: 456, end: 628 }], timeText: '07:36 – 10:28',
+      pinCoords: [2506, 2728], targetCoords: [1992, 1149], tolerance: 75,
+      mapTask: 'Покажіть на карті місто, на яке в серпні 1917 р. рушив із вірними частинами генерал Л. Корнілов, а в жовтні владу захопили більшовики.',
+      source: {
+        img: './lenin-1917.jpg', imgType: 'portrait',
+        text: '«Тимчасовий уряд повалено. Державна влада перейшла до рук органу Петроградської Ради робітничих і солдатських депутатів — Військово-революційного комітету, який стоїть на чолі петроградського пролетаріату і гарнізону. Справа, за яку боровся народ: негайна пропозиція демократичного миру, скасування поміщицької власності на землю, робітничий контроль над виробництвом, створення Радянського уряду — ця справа забезпечена»',
+        caption: 'Володимир Ленін та відозва «До громадян Росії!» (25 жовтня 1917 р.)'
+      },
+      quiz: {
+        type: 'match',
+        question: 'Зіставте соціальні групи з популістськими гаслами, якими більшовики переманювали населення восени 1917 р.:',
+        pairs: [
+          { left: 'Солдати на фронті', right: 'Негайний вихід із війни та укладання миру' },
+          { left: 'Селяни', right: 'Передача поміщицької землі без викупу' },
+          { left: 'Робітники', right: 'Соціальна справедливість і контроль над підприємствами' }
+        ]
+      }
+    },
+    {
+      id: 4, stage: 1, title: '4. Брест-Литовський — проголошення УНР і перший мир',
+      videoId: '7ORM8gT2tcE', segments: [{ start: 629, end: 888 }], timeText: '10:29 – 14:48',
+      pinCoords: [2506, 2906], targetCoords: [1200, 650], tolerance: 75,
+      mapTask: 'Знайдіть на карті місто на західному кордоні, де УНР підписала мирний договір із Четверним союзом в обмін на військову допомогу проти більшовиків.',
+      source: {
+        img: './universal-3.jpg', imgType: 'doc',
+        text: '«Однині Україна стає Українською Народною Республікою. Не відділяючись від республіки Російської і зберігаючи єдність її, ми твердо станемо на нашій землі...»',
+        caption: 'Із III Універсалу Української Центральної Ради'
+      },
+      quiz: {
+        type: 'slider',
+        question: 'Перетягніть повзунок шкали часу, щоб вказати місяць і рік проголошення УНР (III Універсал):',
+        labels: ['Березень 1917', 'Червень 1917', 'Листопад 1917', 'Січень 1918', 'Квітень 1918'],
+        correctIndex: 2
+      }
+    },
+    {
+      id: 5, stage: 1, title: '5. Гельсінкі — звільнення Фінляндії у 1918 р.',
+      videoId: '7ORM8gT2tcE', segments: [{ start: 920, end: 1075 }], timeText: '15:20 – 17:55',
+      pinCoords: [2506, 3084], targetCoords: [2007, 722], tolerance: 75,
+      mapTask: 'Позначте столицю північноєвропейської держави, яка навесні 1918 р. розгромила червоні загони та відстояла свою незалежність.',
+      source: {
+        img: null, imgType: 'none',
+        text: 'Головнокомандувач фінської армії, колишній генерал, який за підтримки німецької Остзейської дивізії та місцевого підпілля вибив радянські війська з країни.',
+        caption: 'Лідер визвольної боротьби Фінляндії у 1918 р.'
+      },
+      quiz: {
+        type: 'portrait_text',
+        question: 'Оберіть портрет головнокомандувача фінської армії та впишіть нижче його прізвище:',
+        portraits: [
+          { img: './denikin.jpg', label: 'Портрет №1', ok: false },
+          { img: './mannerheim.jpg', label: 'Портрет №2', ok: true },
+          { img: './pilsudski.jpg', label: 'Портрет №3', ok: false }
+        ],
+        placeholder: 'Введіть прізвище діяча...',
+        accepted: ['маннергейм', 'карл маннергейм', 'карл густав маннергейм', 'маннергейма', 'mannerheim']
+      }
+    },
+    {
+      id: 6, stage: 1, title: '6. Челябінськ — повстання Чехословацького корпусу',
+      videoId: '7ORM8gT2tcE', segments: [{ start: 1076, end: 1545 }], timeText: '17:56 – 25:45',
+      pinCoords: [2506, 3262], targetCoords: [1510, 3282], tolerance: 75,
+      mapTask: 'Знайдіть на карті уральське місто на Транссибірській магістралі, де 14 травня 1918 р. спалахнуло повстання 45-тисячного Чехословацького корпусу.',
+      source: {
+        img: './kolchak.jpg', imgType: 'portrait',
+        text: 'У 1918 р. проти більшовиків сформувалося кілька центрів опору: Червона армія зазнала жорсткої реорганізації, на Півдні діяла Добровольча армія, а в Омську владу перебрав адмірал.',
+        caption: 'Розстановка сил наприкінці 1918 року'
+      },
+      quiz: {
+        type: 'match',
+        question: 'Установіть відповідність між діячем та його роллю у 1918 році:',
+        pairs: [
+          { left: 'Лев Троцький', img: './trockiy.jpg', right: 'Запровадив у Червоній армії інститут політкомісарів та жорстку дисципліну' },
+          { left: 'Антон Денікін', img: './denikin.jpg', right: 'Очолив Білий рух на Півдні після загибелі генерала Л. Корнілова' },
+          { left: 'Олександр Колчак', img: './kolchak.jpg', right: 'Після перевороту в Омську проголошений «верховним правителем Росії»' }
+        ]
+      }
+    },
+    {
+      id: 7, stage: 2, title: '7. Кам’янець-Подільський — друга війна з більшовиками',
+      videoId: '2E3vPGzKclY', segments: [{ start: 0, end: 210 }], timeText: '00:00 – 03:30',
+      pinCoords: [2506, 2372], targetCoords: [872, 845], tolerance: 75,
+      mapTask: 'Покажіть на карті місто на Поділлі, куди на початку 1919 р. під натиском Червоної армії відступили Директорія УНР та війська Симона Петлюри.',
+      source: {
+        img: './petliura.jpg', imgType: 'portrait',
+        text: '«Вся вища влада Української Народної Республіки на час боротьби з ворогами передається Директорії...» — через слабкість регулярної армії та більшовицьке підпілля в містах уряд евакуювався на захід.',
+        caption: 'Головний отаман військ і флоту УНР Симон Петлюра'
+      },
+      quiz: {
+        type: 'single',
+        question: 'Що дозволило уряду Леніна в листопаді 1918 р. анулювати Брестський мир і розпочати новий наступ на Україну та Балтію?',
+        options: [
+          { text: 'Капітуляція Німеччини та її союзників у Першій світовій війні', ok: true },
+          { text: 'Підписання союзного договору між більшовиками та Директорією УНР', ok: false },
+          { text: 'Повний розгром військ Колчака та Денікіна наприкінці 1918 р.', ok: false }
+        ]
+      }
+    },
+    {
+      id: 8, stage: 2, title: '8. Орел — «Московська директива» Денікіна',
+      videoId: '2E3vPGzKclY', segments: [{ start: 210, end: 368 }, { start: 458, end: 728 }], timeText: '03:30 – 12:08',
+      pinCoords: [2506, 2550], targetCoords: [1299, 1512], tolerance: 75,
+      mapTask: 'Знайдіть на карті місто на південь від Москви, захоплення якого восени 1919 р. стало найдальшою точкою просування армії А. Денікіна.',
+      source: {
+        img: './denikin.jpg', imgType: 'portrait',
+        text: '«Всім збройним силам Півдня Росії ставиться кінцевою метою захоплення серця Росії — Москви... Прямий шлях на Москву лежить через Курськ — Орел — Тулу» — із «Московської директиви» (липень 1919 р.). Водночас біле командування вимагало відновлення «єдиної і неподільної Росії» та категорично відкидало право України на державну самостійність.',
+        caption: 'Командувач ЗСПР генерал Антон Денікін та стратегічний вибір Білого руху влітку 1919 р.'
+      },
+      quiz: {
+        type: 'match',
+        question: 'Зіставте позиції двох білогвардійських генералів у липні 1919 року:',
+        pairs: [
+          { left: 'Антон Денікін', img: './denikin.jpg', right: 'Негайний стрімкий наступ на Москву широким фронтом без закріплення тилів' },
+          { left: 'Петро Врангель', img: './wrangel.jpg', right: 'Пропонував зупинитися, укріпити лінію фронту і з’єднатися зі східними силами' }
+        ]
+      }
+    },
+    {
+      id: 9, stage: 2, title: '9. Таллінн — крах походу Юденича на Петроград',
+      videoId: '2E3vPGzKclY', segments: [{ start: 729, end: 1009 }], timeText: '12:09 – 16:49',
+      pinCoords: [2506, 2728], targetCoords: [1925, 713], tolerance: 75,
+      mapTask: 'Позначте столицю балтійської держави, з території якої восени 1919 р. генерал М. Юденич наступав на Петроград і де його армія була роззброєна.',
+      source: {
+        img: './yudenich.jpg', imgType: 'portrait',
+        text: 'Поки білі генерали відмовлялися визнавати нові національні держави, більшовики запропонували країнам Балтії мирні переговори та визнання їхньої незалежності.',
+        caption: 'Командувач Північно-Західної армії генерал Микола Юденич'
+      },
+      quiz: {
+        type: 'single',
+        question: 'Як дипломатія Леніна вплинула на хід боїв під Петроградом восени 1919 р.?',
+        options: [
+          { text: 'Естонія погодилася на мирні переговори в обмін на визнання незалежності, що позбавило Юденича надійного тилу', ok: true },
+          { text: 'Естонія вступила у війну на боці більшовиків і штурмувала Гельсінкі', ok: false },
+          { text: 'Юденич підписав союз із Петроградською радою проти Антанти', ok: false }
+        ]
+      }
+    },
+    {
+      id: 10, stage: 2, title: '10. Новоросійськ — махновські рейди й крах білих',
+      videoId: '2E3vPGzKclY', segments: [{ start: 1009, end: 1251 }], timeText: '16:49 – 20:51',
+      pinCoords: [2506, 2906], targetCoords: [545, 1620], tolerance: 75,
+      mapTask: 'Покажіть на карті чорноморський порт, з якого в березні 1920 р. залишки армії Денікіна евакуювалися до Криму.',
+      source: {
+        img: './makhno.jpg', imgType: 'portrait',
+        text: 'Восени 1919 р. у тилу Збройних сил Півдня Росії розгорнувся масштабний повстанський рух. Рейди повстанців руйнували залізниці та зривали постачання фронту Денікіна.',
+        caption: 'Провідник Революційної повстанської армії України Нестор Махно'
+      },
+      quiz: {
+        type: 'match',
+        question: 'Установіть відповідність між діячами та подіями зламу 1919–1920 рр.:',
+        pairs: [
+          { left: 'Нестор Махно', img: './makhno.jpg', right: 'Керівник повстанської армії, чиї рейди паралізували тил денікінців в Україні' },
+          { left: 'Семен Будьонний', img: './budenny.jpg', right: 'Командир червоного кінного корпусу, що наступав у районі Воронежа' },
+          { left: 'Олександр Колчак', img: './kolchak.jpg', right: 'Виданий чехословаками в Іркутську та розстріляний у лютому 1920 р.' }
+        ]
+      }
+    },
+    {
+      id: 11, stage: 2, title: '11. Рига — союз 1920 р. і поділ України',
+      videoId: '2E3vPGzKclY', segments: [{ start: 1252, end: 1362 }], timeText: '20:52 – 22:42',
+      pinCoords: [2506, 3084], targetCoords: [1680, 676], tolerance: 75,
+      mapTask: 'Знайдіть на карті місто, де в березні 1921 р. Польща та радянська Росія підписали мирний договір, поділивши українські землі без участі УНР.',
+      source: {
+        img: './pilsudski.jpg', imgType: 'portrait',
+        text: '«Визнаючи право України на незалежне державне існування...» (Варшавська угода, квітень 1920 р.) — проте вже за рік у Ризі союзники УНР уклали сепаратний мир із Москвою.',
+        caption: 'Начальник Польської держави Юзеф Пілсудський'
+      },
+      quiz: {
+        type: 'slider',
+        question: 'Перетягніть повзунок до року підписання Ризького мирного договору, який закріпив поділ українських земель:',
+        labels: ['1918', '1919', '1920', '1921', '1922'],
+        correctIndex: 3
+      }
+    },
+    {
+      id: 12, stage: 2, title: '12. Константинополь — евакуація білих та останні бастіони спротиву',
+      videoId: '2E3vPGzKclY', segments: [{ start: 1363, end: 1595 }], timeText: '22:43 – 26:35',
+      pinCoords: [2506, 3262], targetCoords: [246, 1000], tolerance: 75,
+      mapTask: 'Позначте на карті столицю держави, до якої флотом Антанти були евакуйовані залишки армії Врангеля після розгрому в Криму в листопаді 1920 року?',
+      source: {
+        img: './kholodny-yar-flag.png', imgType: 'flag',
+        text: '«Воля України або смерть!» — гасло на прапорі Холодноярської республіки, повстанці якої продовжували збройну боротьбу проти окупаційного режиму ще кілька років після евакуації Врангеля з Криму.',
+        caption: 'Прапор Холодноярської республіки'
+      },
+      quiz: {
+        type: 'slider',
+        question: 'Перетягніть повзунок шкали років, щоб вказати, до якого року (за даними відео) протрималися останні групи підпільників Холодного Яру:',
+        labels: ['1920', '1921', '1922', '1923', '1925'],
+        correctIndex: 4
+      }
+    }
+  ];
+
+  // Стан застосунку
+  let state = {
+    currentStepIdx: 0,
+    maxUnlockedIdx: 0,
+    watchedSec: {},
+    unlockedTask: {},
+    solvedMap: {},
+    solvedQuiz: {}
+  };
+
+  let teacherUnlocked = false;
+  let quizStarted = false;
+  let pickedPinForMove = false;
+  let map, imageOverlay, spotsLayer, pinsLayer;
+  let currentStage = 1;
+  let player = null;
+  let playerReady = false;
+  let segmentIdx = 0;
+  let watchInterval = null;
+  let lastPolledTime = null;
+  let matchState = { selectedLeft: null, pairs: {}, shuffledRight: [] };
+  let chosenPortraitIdx = null;
+
+  function loadState() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) state = { ...state, ...JSON.parse(saved) };
+    } catch (e) {}
+  }
+
+  function saveState() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {}
+  }
+
+  function startQuizFromWelcome() {
+    quizStarted = true;
+    document.getElementById('start-modal').style.display = 'none';
+    const step = STEPS[state.currentStepIdx];
+    playStepVideo(step);
+  }
+
+  function resetProgress(skipConfirm = false) {
+    if (!skipConfirm && !confirm('Ви дійсно хочете очистити всі збережені відповіді та почати квест спочатку?')) return;
+    localStorage.removeItem(STORAGE_KEY);
+    state = {
+      currentStepIdx: 0, maxUnlockedIdx: 0,
+      watchedSec: {}, unlockedTask: {}, solvedMap: {}, solvedQuiz: {}
+    };
+    pickedPinForMove = false;
+    quizStarted = false;
+    closeVictoryModal();
+    updateProgressUI();
+    selectStep(0, false);
+    if (playerReady && player) {
+      const step = STEPS[0];
+      segmentIdx = 0;
+      lastPolledTime = null;
+      player.cueVideoById({ videoId: step.videoId, startSeconds: step.segments[0].start });
+    }
+    document.getElementById('start-modal').style.display = 'flex';
+  }
+
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  }
+
+  function toggleVideoFullscreen() {
+    const vbox = document.getElementById('video-box');
+    if (!vbox) return;
+    if (!document.fullscreenElement) {
+      vbox.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  }
+
+  async function sha256(str) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  function toggleTeacherAuth() {
+    if (teacherUnlocked) {
+      teacherUnlocked = false;
+      document.getElementById('teacher-lock-icon').textContent = '🔒';
+      document.getElementById('coord-toast').style.display = 'none';
+      onTeacherModeChange();
+      return;
+    }
+    document.getElementById('pwd-err').style.display = 'none';
+    document.getElementById('teacher-pwd-input').value = '';
+    document.getElementById('pwd-modal').style.display = 'flex';
+    setTimeout(() => document.getElementById('teacher-pwd-input').focus(), 50);
+  }
+
+  function closePwdModal() {
+    document.getElementById('pwd-modal').style.display = 'none';
+  }
+
+  function closeVictoryModal() {
+    document.getElementById('victory-modal').style.display = 'none';
+  }
+
+  async function verifyTeacherPwd() {
+    const val = document.getElementById('teacher-pwd-input').value.trim();
+    const hash = await sha256(val);
+    if (hash === TEACHER_PWD_HASH) {
+      teacherUnlocked = true;
+      document.getElementById('teacher-lock-icon').textContent = '🔓';
+      closePwdModal();
+      onTeacherModeChange();
+    } else {
+      document.getElementById('pwd-err').style.display = 'block';
+    }
+  }
+
+  function rebuildPlayerForMode() {
+    if (!player || typeof player.destroy !== 'function') return;
+    const step = STEPS[state.currentStepIdx];
+    const curTime = (playerReady && typeof player.getCurrentTime === 'function')
+      ? player.getCurrentTime()
+      : step.segments[segmentIdx].start;
+    const wasPlaying = (playerReady && typeof player.getPlayerState === 'function')
+      ? player.getPlayerState() === YT.PlayerState.PLAYING
+      : false;
+
+    clearInterval(watchInterval);
+    playerReady = false;
+    player.destroy();
+    createYTPlayer(step.videoId, curTime, wasPlaying);
+  }
+
+  function onTeacherModeChange() {
+    updateTaskLockUI();
+    renderStepNav();
+    renderMapObjects();
+    const shield = document.getElementById('video-shield');
+    if (shield) shield.style.display = teacherUnlocked ? 'none' : 'block';
+
+    const speedSel = document.getElementById('speed-select');
+    if (speedSel) {
+      if (teacherUnlocked) {
+        if (!speedSel.querySelector('option[value="2"]')) {
+          const opt2 = document.createElement('option');
+          opt2.value = '2';
+          opt2.textContent = '2x';
+          speedSel.appendChild(opt2);
+        }
+      } else {
+        const opt2 = speedSel.querySelector('option[value="2"]');
+        if (opt2) opt2.remove();
+        if (Number(speedSel.value) > 1.5) {
+          speedSel.value = '1.5';
+        }
+      }
+    }
+
+    rebuildPlayerForMode();
+  }
+
+  function getStepTotalDuration(step) {
+    return step.segments.reduce((acc, s) => acc + (s.end - s.start), 0);
+  }
+
+  function initMap() {
+    loadState();
+    updateProgressUI();
+
+    map = L.map('map', {
+      crs: L.CRS.Simple,
+      minZoom: -3,
+      maxZoom: 2,
+      zoomSnap: 0.1,
+      zoomDelta: 0.25
+    });
+    spotsLayer = L.layerGroup().addTo(map);
+    pinsLayer = L.layerGroup().addTo(map);
+    loadStageMap(STEPS[state.currentStepIdx].stage, true);
+
+    map.on('click', (e) => {
+      const y = Math.round(e.latlng.lat);
+      const x = Math.round(e.latlng.lng);
+      const step = STEPS[state.currentStepIdx];
+
+      if (teacherUnlocked) {
+        const toast = document.getElementById('coord-toast');
+        toast.style.display = 'block';
+        toast.textContent = `Координата: [${y}, ${x}] (скопійовано)`;
+        navigator.clipboard?.writeText(`${y}, ${x}`);
+
+        if (!state.solvedMap[step.id]) {
+          evaluateMapPlacement(y, x);
+        }
+        return;
+      }
+
+      if (!state.unlockedTask[step.id]) {
+        document.getElementById('map-hint').innerHTML =
+          `🔒 <strong>Спочатку додивись відеофрагмент (88%)!</strong> Після цього ти зможеш перемістити мітку на карті.`;
+        return;
+      }
+
+      if (!pickedPinForMove && !state.solvedMap[step.id]) {
+        document.getElementById('map-hint').innerHTML =
+          `👆 <strong>Спочатку клікни по мітці №${step.id}</strong> у верхній частині карти, щоб узяти її, а потім — на потрібну жовту точку на карті.`;
+        return;
+      }
+
+      evaluateMapPlacement(y, x);
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && player && typeof player.pauseVideo === 'function') {
+        player.pauseVideo();
+      }
+    });
+
+    selectStep(state.currentStepIdx, false);
+  }
+
+  function loadStageMap(stage, fitAll = true) {
+    currentStage = stage;
+    const cfg = MAPS[stage];
+    document.getElementById('stage-indicator').textContent =
+      stage === 1 ? 'Етап 1: 1917–1918 рр.' : 'Етап 2: 1919–1921 рр.';
+    document.getElementById('map-source-bar').innerHTML =
+      `<div>Джерело карти: <a href="${cfg.sourcePage}" target="_blank" rel="noopener noreferrer">${cfg.sourceLabel}</a></div>` +
+      `<div>Джерело відео: <a href="${cfg.videoUrl}" target="_blank" rel="noopener noreferrer">${cfg.videoLabel}</a></div>`;
+
+    const img = new Image();
+    img.onload = () => applyOverlay(img.src, img.naturalHeight, img.naturalWidth, fitAll);
+    img.onerror = () => {
+      const fb = new Image();
+      fb.onload = () => applyOverlay(fb.src, fb.naturalHeight, fb.naturalWidth, fitAll);
+      fb.src = cfg.fallbackUrl;
+    };
+    img.src = cfg.file;
+  }
+
+  function applyOverlay(src, h, w, fitAll) {
+    const height = h || 2600;
+    const width = w || 3600;
+    const bounds = [[0, 0], [height, width]];
+    if (imageOverlay) map.removeLayer(imageOverlay);
+    imageOverlay = L.imageOverlay(src, bounds).addTo(map);
+    map.setMaxBounds([[-300, -300], [height + 300, width + 300]]);
+    if (fitAll) {
+      map.invalidateSize();
+      map.fitBounds(bounds, { padding: [10, 10] });
+    }
+    renderMapObjects();
+  }
+
+  function renderMapObjects() {
+    spotsLayer.clearLayers();
+    pinsLayer.clearLayers();
+
+    const stageSteps = STEPS.filter(s => s.stage === currentStage);
+    const decoys = DECOY_SPOTS[currentStage] || [];
+
+    const allSpots = [
+      ...stageSteps.map(s => ({ coords: s.targetCoords, isTargetForStepId: s.id })),
+      ...decoys.map(d => ({ coords: d.coords, isTargetForStepId: null }))
+    ];
+
+    allSpots.forEach(spot => {
+      const alreadyPlaced = spot.isTargetForStepId && state.solvedMap[spot.isTargetForStepId];
+      if (alreadyPlaced) return;
+
+      const spotIcon = L.divIcon({
+        className: 'spot-wrap',
+        html: `<div class="target-spot"></div>`,
+        iconSize: [0, 0],
+        iconAnchor: [0, 0]
+      });
+
+      const m = L.marker(spot.coords, { icon: spotIcon }).addTo(spotsLayer);
+      m.on('click', (ev) => {
+        L.DomEvent.stopPropagation(ev);
+        const curStep = STEPS[state.currentStepIdx];
+
+        if (teacherUnlocked) {
+          const toast = document.getElementById('coord-toast');
+          toast.style.display = 'block';
+          toast.textContent = `Точка: [${spot.coords[0]}, ${spot.coords[1]}] (скопійовано)`;
+          navigator.clipboard?.writeText(`${spot.coords[0]}, ${spot.coords[1]}`);
+
+          if (!state.solvedMap[curStep.id]) {
+            evaluateMapPlacement(spot.coords[0], spot.coords[1]);
+          }
+          return;
+        }
+
+        if (!state.unlockedTask[curStep.id]) {
+          document.getElementById('map-hint').innerHTML =
+            `🔒 <strong>Спочатку додивись відеофрагмент (88%)!</strong>`;
+          return;
+        }
+        if (!pickedPinForMove && !state.solvedMap[curStep.id]) {
+          document.getElementById('map-hint').innerHTML =
+            `👆 <strong>Спочатку клікни по мітці №${curStep.id}</strong> у верхній частині карти, а потім на цю жовту точку.`;
+          return;
+        }
+        evaluateMapPlacement(spot.coords[0], spot.coords[1]);
+      });
+    });
+
+    stageSteps.forEach((step) => {
+      const globalIdx = STEPS.findIndex(x => x.id === step.id);
+      const isSolvedMap = !!state.solvedMap[step.id];
+      const isFullyDone = isSolvedMap && !!state.solvedQuiz[step.id];
+      const isActive = globalIdx === state.currentStepIdx;
+      const isLocked = !teacherUnlocked && globalIdx > state.maxUnlockedIdx;
+
+      const pos = isSolvedMap ? step.targetCoords : step.pinCoords;
+      const pickedClass = (isActive && pickedPinForMove && !isSolvedMap) ? 'picked-for-move' : '';
+
+      const icon = L.divIcon({
+        className: 'pin-wrap',
+        html: `<div class="custom-pin ${isFullyDone ? 'done' : ''} ${isActive ? 'active' : ''} ${pickedClass}">${step.id}</div>`,
+        iconSize: [0, 0],
+        iconAnchor: [0, 0]
+      });
+
+      const marker = L.marker(pos, { icon, zIndexOffset: isActive ? 500 : 100 }).addTo(pinsLayer);
+      marker.on('click', (ev) => {
+        L.DomEvent.stopPropagation(ev);
+        if (isLocked) return;
+
+        if (isSolvedMap) {
+          selectStep(globalIdx, true);
+          return;
+        }
+
+        if (!isActive) {
+          selectStep(globalIdx, true, true);
+          return;
+        }
+
+        if (!state.unlockedTask[step.id] && !teacherUnlocked) {
+          document.getElementById('map-hint').innerHTML =
+            `🔒 <strong>Спочатку переглянь відеофрагмент (88%)</strong>, щоб активувати переміщення мітки №${step.id}.`;
+          return;
+        }
+
+        pickedPinForMove = true;
+        renderMapObjects();
+        document.getElementById('map-hint').innerHTML =
+          `🎯 <strong>Мітку №${step.id} обрано!</strong> Тепер клікни на потрібну жовту точку на карті, щоб перемістити її туди.`;
+      });
+    });
+  }
+
+  function evaluateMapPlacement(y, x) {
+    const step = STEPS[state.currentStepIdx];
+    const dist = Math.hypot(y - step.targetCoords[0], x - step.targetCoords[1]);
+    const fb = document.getElementById('fb-map');
+
+    if (dist <= step.tolerance) {
+      pickedPinForMove = false;
+      if (!state.solvedMap[step.id]) {
+        state.solvedMap[step.id] = true;
+        saveState();
+        updateProgressUI();
+      }
+      fb.className = 'feedback ok';
+      fb.textContent = '✔ Правильно! Мітку переміщено на потрібне місце. Натиснувши на неї на карті, ти завжди можеш переглянути відео знову.';
+      document.getElementById('map-hint').innerHTML = `✔ <strong>Крок ${step.id}:</strong> Мітку встановлено правильно!`;
+      renderMapObjects();
+      renderStepNav();
+      checkStepCompletion();
+    } else {
+      fb.className = 'feedback err';
+      fb.textContent = '✖ Неправильно. Це інший географічний об’єкт (мітка-обманка або інше місто). Спробуй ще раз!';
+    }
+  }
+
+  function renderStepNav() {
+    const nav = document.getElementById('step-nav');
+    nav.innerHTML = '';
+    STEPS.forEach((s, idx) => {
+      const btn = document.createElement('button');
+      const isDone = state.solvedMap[s.id] && state.solvedQuiz[s.id];
+      const isLocked = !teacherUnlocked && idx > state.maxUnlockedIdx;
+
+      btn.className = `step-dot ${idx === state.currentStepIdx ? 'active' : ''} ${isDone ? 'done' : ''} ${isLocked ? 'locked' : ''}`;
+      btn.textContent = isLocked ? '🔒' : s.id;
+      btn.title = isLocked ? 'Виконай попередні мітки, щоб відкрити' : `Крок ${s.id}`;
+      btn.onclick = () => { if (!isLocked) selectStep(idx, true); };
+      nav.appendChild(btn);
+    });
+  }
+
+  function updateTaskLockUI() {
+    const step = STEPS[state.currentStepIdx];
+    const unlocked = teacherUnlocked || !!state.unlockedTask[step.id];
+    document.getElementById('tasks-lock').style.display = unlocked ? 'none' : 'flex';
+  }
+
+  function updateWatchProgressUI(step) {
+    const total = getStepTotalDuration(step);
+    const watched = Math.min(total, Math.floor(state.watchedSec[step.id] || 0));
+    const pct = Math.min(100, Math.round((watched / total) * 100));
+    const reqPct = Math.round(REQUIRED_WATCH_RATIO * 100);
+
+    document.getElementById('watch-seconds-text').textContent = `${watched} / ${total} с`;
+    const fill = document.getElementById('watch-progress-fill');
+    fill.style.width = `${pct}%`;
+
+    if (state.unlockedTask[step.id]) {
+      fill.classList.add('complete');
+      document.getElementById('watch-status-text').textContent = `✔ Завдання відкрито (переглянуто ${pct}%)`;
+    } else {
+      fill.classList.remove('complete');
+      document.getElementById('watch-status-text').textContent = `Переглянуто: ${pct}% (потрібно ${reqPct}%)`;
+    }
+  }
+
+  function selectStep(idx, autoPlay = true, preselectPin = false) {
+    state.currentStepIdx = idx;
+    const step = STEPS[idx];
+    pickedPinForMove = preselectPin && !state.solvedMap[step.id] && (teacherUnlocked || !!state.unlockedTask[step.id]);
+    saveState();
+
+    document.getElementById('map-step-counter').textContent = `Крок ${step.id} із ${STEPS.length}`;
+
+    if (step.stage !== currentStage) {
+      loadStageMap(step.stage, true);
+    } else {
+      renderMapObjects();
+    }
+    renderStepNav();
+    updateTaskLockUI();
+    updateWatchProgressUI(step);
+
+    document.getElementById('map-task-desc').textContent = step.mapTask;
+    document.getElementById('video-timer-label').textContent = `Фрагмент: ${step.timeText}`;
+
+    const fbMap = document.getElementById('fb-map');
+    if (state.solvedMap[step.id]) {
+      fbMap.className = 'feedback ok';
+      fbMap.textContent = '✔ Правильно! Мітку переміщено на потрібне місце.';
+      document.getElementById('map-hint').innerHTML = `✔ <strong>Крок ${step.id}:</strong> Мітку встановлено правильно!`;
+    } else if (pickedPinForMove) {
+      fbMap.className = 'feedback';
+      fbMap.textContent = '';
+      document.getElementById('map-hint').innerHTML =
+        `🎯 <strong>Мітку №${step.id} обрано!</strong> Тепер клікни на потрібну жовту точку на карті, щоб перемістити її туди.`;
+    } else {
+      fbMap.className = 'feedback';
+      fbMap.textContent = '';
+      document.getElementById('map-hint').innerHTML = (state.unlockedTask[step.id] || teacherUnlocked)
+        ? `📍 <strong>Крок ${step.id}:</strong> Клікни по мітці №${step.id} вгорі карти, а потім — на відповідну жовту точку.`
+        : `🎬 <strong>Крок ${step.id}:</strong> Переглянь 88% відеофрагмента, щоб відкрити завдання.`;
+    }
+
+    renderSourceAndQuiz(step);
+    checkStepCompletion(false);
+    if (autoPlay && quizStarted) playStepVideo(step);
+  }
+
+  function isAllCompleted() {
+    return STEPS.every(s => state.solvedMap[s.id] && state.solvedQuiz[s.id]);
+  }
+
+  function checkStepCompletion(showVictoryOnFinish = true) {
+    const step = STEPS[state.currentStepIdx];
+    const bothDone = state.solvedMap[step.id] && state.solvedQuiz[step.id];
+    const nextBtn = document.getElementById('next-step-btn');
+
+    if (bothDone) {
+      if (state.currentStepIdx + 1 > state.maxUnlockedIdx && state.currentStepIdx + 1 < STEPS.length) {
+        state.maxUnlockedIdx = state.currentStepIdx + 1;
+        saveState();
+        renderStepNav();
+        renderMapObjects();
+      }
+      if (state.currentStepIdx + 1 < STEPS.length) {
+        nextBtn.style.display = 'block';
+        nextBtn.textContent = `Перейти до мітки №${state.currentStepIdx + 2} →`;
+      } else {
+        nextBtn.style.display = 'block';
+        nextBtn.textContent = `🎉 Квіз завершено! Відкрити фінальне привітання`;
+        if (showVictoryOnFinish && isAllCompleted()) {
+          document.getElementById('victory-modal').style.display = 'flex';
+        }
+      }
+    } else {
+      nextBtn.style.display = 'none';
+    }
+  }
+
+  function goNextStep() {
+    if (state.currentStepIdx + 1 < STEPS.length) {
+      selectStep(state.currentStepIdx + 1, true);
+    } else if (isAllCompleted()) {
+      document.getElementById('victory-modal').style.display = 'flex';
+    }
+  }
+
+  function openLightbox(src, mode = 'doc') {
+    const img = document.getElementById('lightbox-img');
+    img.src = src;
+    img.className = mode === 'portrait' ? 'portrait-2x' : 'doc-full';
+    document.getElementById('lightbox').style.display = 'flex';
+  }
+
+  function renderSourceAndQuiz(step) {
+    const srcCont = document.getElementById('source-container');
+    let imgHtml = '';
+    let zoomNote = '';
+
+    if (step.source.img) {
+      if (step.source.imgType === 'doc') {
+        imgHtml = `<img src="${step.source.img}" alt="Документ" class="zoomable-doc" title="Натисни, щоб розгорнути документ" onclick="openLightbox(this.src, 'doc')" onerror="this.style.display='none'" />`;
+        zoomNote = `<div class="zoom-hint">🔍 Натисніть на зображення документа, щоб розгорнути для читання</div>`;
+      } else if (step.source.imgType === 'portrait') {
+        imgHtml = `<img src="${step.source.img}" alt="Портрет" class="zoomable-portrait" title="Натисни, щоб збільшити портрет удвічі" onclick="openLightbox(this.src, 'portrait')" onerror="this.style.display='none'" />`;
+        zoomNote = `<div class="zoom-hint">🔍 Натисніть на портрет, щоб збільшити удвічі</div>`;
+      } else if (step.source.imgType === 'flag') {
+        imgHtml = `<img src="${step.source.img}" alt="Прапор" class="zoomable-doc" title="Натисни, щоб розгорнути зображення" onclick="openLightbox(this.src, 'doc')" onerror="this.style.display='none'" />`;
+        zoomNote = `<div class="zoom-hint">🔍 Натисніть на зображення прапора, щоб розгорнути</div>`;
+      } else {
+        imgHtml = `<img src="${step.source.img}" alt="Ілюстрація" class="zoomable-doc" onclick="openLightbox(this.src, 'doc')" onerror="this.style.display='none'" />`;
+      }
+    }
+
+    srcCont.innerHTML = `
+      <div class="source-box">
+        ${imgHtml}
+        <div>
+          <div class="source-text">${step.source.text}</div>
+          <div class="source-caption">${step.source.caption}</div>
+          ${zoomNote}
+        </div>
+      </div>
+    `;
+
+    document.getElementById('quiz-question').textContent = step.quiz.question;
+    const body = document.getElementById('quiz-body');
+    body.innerHTML = '';
+
+    const fbQuiz = document.getElementById('fb-quiz');
+    fbQuiz.className = state.solvedQuiz[step.id] ? 'feedback ok' : 'feedback';
+    fbQuiz.textContent = state.solvedQuiz[step.id] ? '✔ Завдання виконано правильно!' : '';
+
+    const q = step.quiz;
+    if (q.type === 'single' || q.type === 'multi') {
+      const list = document.createElement('div');
+      list.className = 'opt-list';
+      q.options.forEach((opt, i) => {
+        const label = document.createElement('label');
+        label.className = 'opt-item';
+        label.innerHTML = `<input type="${q.type === 'single' ? 'radio' : 'checkbox'}" name="qopt" value="${i}" /> <span>${opt.text}</span>`;
+        list.appendChild(label);
+      });
+      body.appendChild(list);
+    } else if (q.type === 'slider') {
+      body.innerHTML = `
+        <div class="slider-wrap">
+          <input type="range" id="quiz-slider" min="0" max="${q.labels.length - 1}" value="0"
+                 oninput="document.getElementById('slider-val').textContent = '${q.labels.join('|')}'.split('|')[this.value]" />
+          <div class="slider-labels">${q.labels.map(l => `<span>${l}</span>`).join('')}</div>
+          <div class="slider-val" id="slider-val">${q.labels[0]}</div>
+        </div>
+      `;
+    } else if (q.type === 'portrait_text') {
+      chosenPortraitIdx = null;
+      const grid = document.createElement('div');
+      grid.className = 'portrait-choice-grid';
+      q.portraits.forEach((p, idx) => {
+        const card = document.createElement('div');
+        card.className = 'portrait-card';
+        card.dataset.pidx = idx;
+        card.innerHTML = `
+          <img src="${p.img}" alt="${p.label}" class="zoomable-portrait"
+               title="Клік по картці — обрати; подвійний клік по фото — збільшити удвічі"
+               ondblclick="event.stopPropagation(); openLightbox(this.src, 'portrait')" />
+          <span>${p.label}</span>
+        `;
+        card.onclick = () => {
+          chosenPortraitIdx = idx;
+          document.querySelectorAll('.portrait-card').forEach(c => c.classList.remove('chosen'));
+          card.classList.add('chosen');
+        };
+        grid.appendChild(card);
+      });
+      body.appendChild(grid);
+      const hint = document.createElement('div');
+      hint.className = 'zoom-hint';
+      hint.style.marginBottom = '8px';
+      hint.textContent = '🔍 Подвійний клік по портрету — збільшити удвічі';
+      body.appendChild(hint);
+
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.className = 'text-input';
+      inp.id = 'quiz-text';
+      inp.placeholder = q.placeholder;
+      body.appendChild(inp);
+    } else if (q.type === 'match') {
+      let shuffled = q.pairs.map((p, idx) => ({ text: p.right, idx }));
+      do {
+        shuffled.sort(() => Math.random() - 0.5);
+      } while (shuffled.length > 1 && shuffled.every((item, i) => item.idx === i));
+
+      matchState = { selectedLeft: null, pairs: {}, shuffledRight: shuffled };
+      const wrap = document.createElement('div');
+      wrap.className = 'match-wrapper';
+      wrap.innerHTML = `
+        <svg class="match-svg" id="match-svg"></svg>
+        <div class="match-grid" id="match-grid">
+          <div class="match-col" id="match-left">
+            ${q.pairs.map((p, i) => `
+              <button class="match-btn" data-l="${i}" onclick="selectMatchLeft(${i})">
+                ${p.img ? `<img class="mini-portrait zoomable-portrait" src="${p.img}" alt="" title="Натисни на фото, щоб збільшити удвічі" onclick="event.stopPropagation(); openLightbox(this.src, 'portrait')" onerror="this.style.display='none'" />` : ''}
+                <span><strong>${i + 1}.</strong> ${p.left}</span>
+              </button>
+            `).join('')}
+          </div>
+          <div class="match-col" id="match-right">
+            ${shuffled.map(r => `
+              <button class="match-btn" data-r="${r.idx}" onclick="selectMatchRight(${r.idx})">
+                <span>${r.text}</span>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+      body.appendChild(wrap);
+    }
+  }
+
+  function selectMatchLeft(i) {
+    matchState.selectedLeft = i;
+    document.querySelectorAll('#match-left .match-btn').forEach(b => b.classList.remove('selected'));
+    document.querySelector(`#match-left .match-btn[data-l="${i}"]`).classList.add('selected');
+  }
+
+  function selectMatchRight(rIdx) {
+    if (matchState.selectedLeft === null) return;
+    matchState.pairs[matchState.selectedLeft] = rIdx;
+    document.querySelectorAll('#match-left .match-btn').forEach(b => b.classList.remove('selected'));
+    document.querySelector(`#match-left .match-btn[data-l="${matchState.selectedLeft}"]`).classList.add('paired');
+    matchState.selectedLeft = null;
+    drawMatchLines();
+  }
+
+  function drawMatchLines() {
+    const svg = document.getElementById('match-svg');
+    const wrap = document.querySelector('.match-wrapper');
+    if (!svg || !wrap) return;
+    const wrapRect = wrap.getBoundingClientRect();
+    svg.innerHTML = '';
+
+    document.querySelectorAll('#match-right .match-btn').forEach(b => b.classList.remove('paired'));
+
+    Object.entries(matchState.pairs).forEach(([lIdx, rIdx]) => {
+      const lBtn = document.querySelector(`#match-left .match-btn[data-l="${lIdx}"]`);
+      const rBtn = document.querySelector(`#match-right .match-btn[data-r="${rIdx}"]`);
+      if (!lBtn || !rBtn) return;
+      rBtn.classList.add('paired');
+
+      const lRect = lBtn.getBoundingClientRect();
+      const rRect = rBtn.getBoundingClientRect();
+
+      const x1 = lRect.right - wrapRect.left;
+      const y1 = lRect.top + lRect.height / 2 - wrapRect.top;
+      const x2 = rRect.left - wrapRect.left;
+      const y2 = rRect.top + rRect.height / 2 - wrapRect.top;
+
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', x1);
+      line.setAttribute('y1', y1);
+      line.setAttribute('x2', x2);
+      line.setAttribute('y2', y2);
+      line.setAttribute('stroke', '#38bdf8');
+      line.setAttribute('stroke-width', '2.5');
+      line.setAttribute('stroke-linecap', 'round');
+      svg.appendChild(line);
+    });
+  }
+
+  window.addEventListener('resize', drawMatchLines);
+
+  function checkQuiz() {
+    const step = STEPS[state.currentStepIdx];
+    const q = step.quiz;
+    let isCorrect = false;
+
+    if (q.type === 'single' || q.type === 'multi') {
+      const checked = [...document.querySelectorAll('input[name="qopt"]:checked')].map(el => Number(el.value));
+      const rightIndices = q.options.map((o, i) => o.ok ? i : -1).filter(i => i !== -1);
+      isCorrect = checked.length === rightIndices.length && checked.every(v => rightIndices.includes(v));
+    } else if (q.type === 'slider') {
+      isCorrect = Number(document.getElementById('quiz-slider').value) === q.correctIndex;
+    } else if (q.type === 'portrait_text') {
+      const rawVal = document.getElementById('quiz-text').value.trim().toLowerCase().replace(/[.,!?;:"'«»]/g, '');
+      const portraitOk = chosenPortraitIdx !== null && q.portraits[chosenPortraitIdx]?.ok;
+      isCorrect = portraitOk && q.accepted.includes(rawVal);
+    } else if (q.type === 'match') {
+      isCorrect = q.pairs.every((_, i) => matchState.pairs[i] === i);
+    }
+
+    const fb = document.getElementById('fb-quiz');
+    if (isCorrect) {
+      if (!state.solvedQuiz[step.id]) {
+        state.solvedQuiz[step.id] = true;
+        saveState();
+        updateProgressUI();
+      }
+      fb.className = 'feedback ok';
+      fb.textContent = state.solvedMap[step.id]
+        ? '✔ Відповідь правильна! Обидва завдання мітки виконано.'
+        : '✔ Відповідь правильна! Не забудь також перемістити мітку на карті (Завдання А).';
+      renderMapObjects();
+      renderStepNav();
+      checkStepCompletion(true);
+    } else {
+      fb.className = 'feedback err';
+      if (q.type === 'portrait_text') {
+        const rawVal = document.getElementById('quiz-text').value.trim().toLowerCase().replace(/[.,!?;:"'«»]/g, '');
+        const portraitOk = chosenPortraitIdx !== null && q.portraits[chosenPortraitIdx]?.ok;
+        const textOk = q.accepted.includes(rawVal);
+        if (chosenPortraitIdx === null) {
+          fb.textContent = '✖ Спочатку натисни на один із трьох портретів вище, щоб обрати діяча.';
+        } else if (!portraitOk && !textOk) {
+          fb.textContent = '✖ Обрано не той портрет і неправильно вказано прізвище. Переглянь відеофрагмент ще раз.';
+        } else if (!portraitOk) {
+          fb.textContent = '✖ Прізвище вписано правильно, але обрано портрет іншого діяча. Обери інше фото!';
+        } else {
+          fb.textContent = '✖ Портрет обрано правильно, але перевір написання прізвища діяча у полі введення.';
+        }
+      } else {
+        fb.textContent = '✖ Не зовсім так. Перечитай уривок документа або переглянь відеофрагмент ще раз.';
+      }
+    }
+  }
+
+  function updateProgressUI() {
+    const mapDone = Object.values(state.solvedMap).filter(Boolean).length;
+    const quizDone = Object.values(state.solvedQuiz).filter(Boolean).length;
+    const totalDone = mapDone + quizDone;
+    document.getElementById('progress-box').textContent = `Виконано: ${totalDone} / ${STEPS.length * 2} завдань`;
+  }
+
+  function applySavedAudioAndSpeed() {
+    if (!playerReady || !player) return;
+    const volSlider = document.getElementById('volume-slider');
+    const muteBtn = document.getElementById('mute-btn');
+    if (volSlider) {
+      const vol = Number(volSlider.value);
+      player.setVolume(vol);
+      if (vol === 0) {
+        player.mute();
+        if (muteBtn) muteBtn.textContent = '🔇';
+      } else {
+        player.unMute();
+        if (muteBtn) muteBtn.textContent = '🔊';
+      }
+    }
+    const speedSel = document.getElementById('speed-select');
+    if (speedSel) {
+      let rate = Number(speedSel.value);
+      if (!teacherUnlocked && rate > 1.5) {
+        rate = 1.5;
+        speedSel.value = '1.5';
+      }
+      player.setPlaybackRate(rate);
+    }
+  }
+
+  function createYTPlayer(videoId, startSeconds, autoPlay) {
+    player = new YT.Player('yt-player', {
+      videoId: videoId,
+      playerVars: {
+        rel: 0,
+        modestbranding: 1,
+        controls: teacherUnlocked ? 1 : 0,
+        disablekb: teacherUnlocked ? 0 : 1,
+        fs: 1,
+        start: Math.floor(startSeconds)
+      },
+      events: {
+        onReady: () => {
+          playerReady = true;
+          applySavedAudioAndSpeed();
+          if (autoPlay) {
+            player.loadVideoById({ videoId: videoId, startSeconds: startSeconds });
+            startWatchTracker(STEPS[state.currentStepIdx]);
+          } else {
+            player.cueVideoById({ videoId: videoId, startSeconds: startSeconds });
+            startWatchTracker(STEPS[state.currentStepIdx]);
+          }
+        },
+        onPlaybackRateChange: (e) => {
+          const speedSel = document.getElementById('speed-select');
+          if (!teacherUnlocked && e.data > 1.5) {
+            player.setPlaybackRate(1.5);
+            if (speedSel) speedSel.value = '1.5';
+          } else if (speedSel && speedSel.querySelector(`option[value="${e.data}"]`)) {
+            speedSel.value = String(e.data);
+          }
+        }
+      }
+    });
+  }
+
+  function onYouTubeIframeAPIReady() {
+    const step = STEPS[state.currentStepIdx];
+    createYTPlayer(step.videoId, step.segments[0].start, quizStarted);
+  }
+
+  function startWatchTracker(step) {
+    clearInterval(watchInterval);
+    lastPolledTime = null;
+    watchInterval = setInterval(() => {
+      if (!player || !playerReady || typeof player.getPlayerState !== 'function') return;
+      const pState = player.getPlayerState();
+      const t = player.getCurrentTime();
+      const activeSeg = step.segments[segmentIdx];
+
+      if (pState === YT.PlayerState.PLAYING && !document.hidden) {
+        if (lastPolledTime !== null) {
+          const delta = t - lastPolledTime;
+          if (!teacherUnlocked && delta > 2.2) {
+            player.seekTo(lastPolledTime, true);
+            return;
+          }
+          if (delta > 0 && delta <= 2.0) {
+            state.watchedSec[step.id] = (state.watchedSec[step.id] || 0) + delta;
+            const total = getStepTotalDuration(step);
+            if (!state.unlockedTask[step.id] && state.watchedSec[step.id] >= total * REQUIRED_WATCH_RATIO) {
+              state.unlockedTask[step.id] = true;
+              updateTaskLockUI();
+              document.getElementById('map-hint').innerHTML =
+                `📍 <strong>Крок ${step.id}:</strong> Клікни по мітці №${step.id} вгорі карти, а потім — на відповідну жовту точку.`;
+            }
+            saveState();
+            updateWatchProgressUI(step);
+          }
+        }
+        lastPolledTime = t;
+      } else {
+        lastPolledTime = null;
+      }
+
+      if (activeSeg && t >= activeSeg.end) {
+        if (segmentIdx + 1 < step.segments.length) {
+          segmentIdx++;
+          lastPolledTime = null;
+          player.seekTo(step.segments[segmentIdx].start, true);
+        } else {
+          player.pauseVideo();
+          lastPolledTime = null;
+        }
+      }
+    }, 500);
+  }
+
+  function playStepVideo(step) {
+    if (!playerReady) return;
+    segmentIdx = 0;
+    lastPolledTime = null;
+    const seg = step.segments[0];
+    player.loadVideoById({ videoId: step.videoId, startSeconds: seg.start });
+    applySavedAudioAndSpeed();
+    startWatchTracker(step);
+  }
+
+  function replaySegment() {
+    playStepVideo(STEPS[state.currentStepIdx]);
+  }
+
+  function togglePlayPause() {
+    if (!playerReady || !player) return;
+    const st = player.getPlayerState();
+    if (st === YT.PlayerState.PLAYING) {
+      player.pauseVideo();
+    } else {
+      player.playVideo();
+    }
+  }
+
+  function toggleMute() {
+    if (!playerReady || !player) return;
+    const btn = document.getElementById('mute-btn');
+    const slider = document.getElementById('volume-slider');
+    if (player.isMuted()) {
+      player.unMute();
+      const restoredVol = Number(slider.value) > 0 ? Number(slider.value) : 80;
+      player.setVolume(restoredVol);
+      slider.value = restoredVol;
+      btn.textContent = '🔊';
+    } else {
+      player.mute();
+      btn.textContent = '🔇';
+    }
+  }
+
+  function changeVolume(val) {
+    if (!playerReady || !player) return;
+    const vol = Number(val);
+    const btn = document.getElementById('mute-btn');
+    player.setVolume(vol);
+    if (vol === 0) {
+      player.mute();
+      btn.textContent = '🔇';
+    } else {
+      if (player.isMuted()) player.unMute();
+      btn.textContent = '🔊';
+    }
+  }
+
+  function changePlaybackSpeed(rate) {
+    if (!playerReady || !player) return;
+    let numRate = Number(rate);
+    if (!teacherUnlocked && numRate > 1.5) {
+      numRate = 1.5;
+      document.getElementById('speed-select').value = '1.5';
+    }
+    player.setPlaybackRate(numRate);
+  }
+
+  window.onload = initMap;
+</script>
+</body>
+</html>
